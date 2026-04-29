@@ -12,16 +12,16 @@ def shorten_points(data, num_points_off=10):
 def make_fitting_func(omega):
     """ Return a sinusoidal function parameterized by the angular frequency `omega`. """
     def fitting_func(t, A, A0, phi):
-        return A0 + np.abs(A) * np.sin(omega * t + phi)
+        return A0 + A * np.sin(omega * t - phi)
     return fitting_func
 
-def fit_curve(curve, fitting_func, p0=None):
+def fit_curve(curve, fitting_func, p0=None, bounds=None):
     """Fit `fitting_func` to the data in `curve` (array Nx2)."""    
     if len(curve) > 200:
         curve = curve[:200]
     
     xs, ys = shorten_points(curve)
-    popt, _ = curve_fit(fitting_func, xs, ys, p0=p0)
+    popt, _ = curve_fit(fitting_func, xs, ys, p0=p0, bounds=bounds)
     return xs, popt
 
 def adj_omega(x):
@@ -30,8 +30,8 @@ def adj_omega(x):
 
 def adj_ph(x, correct=False):
     """Correct the phase: if `correct=True`, map phase values to the range [-180, 180]."""
-    # if correct:
-        # return np.where(x > 180, x - 360, -x)
+    if correct:
+        return np.where(x > 180, x - 360, -x)
     return (360 - x)
 
 def inverse_variance(variance_list: list):
