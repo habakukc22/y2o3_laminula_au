@@ -5,7 +5,8 @@ def treat_npy_array(nparr):
     data = []
     xs = np.array(nparr[0][0])
     ys = np.array(nparr[0][1])
-    # print(nparr[0][1])
+    # print(f"Dentro de treat_npy_array xs: \n {xs}")
+    # print(f"Dentro de treat_npy_array ys: \n {ys}")
     # xs, ys = [], []
     for idx in range(len(nparr)):
         ys = nparr[idx][1] if idx == 0 else (nparr[idx][1]-nparr[idx-1][1])
