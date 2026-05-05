@@ -12,7 +12,7 @@ def shorten_points(data, num_points_off=10):
 def make_fitting_func(omega):
     """ Return a sinusoidal function parameterized by the angular frequency `omega`. """
     def fitting_func(t, A, A0, phi):
-        return A0 + A * np.sin(omega * t - phi)
+        return A0 + A * np.cos(omega * t - phi)
     return fitting_func
 
 def fit_curve(curve, fitting_func, p0=None, bounds=None):
