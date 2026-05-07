@@ -2,6 +2,8 @@ import numpy as np
 from scipy.fft import fft, fftfreq
 import os
 import matplotlib.pyplot as plt
+from uncertainties import ufloat
+from uncertainties.umath import sqrt, atan
 
 def process_npy_array(nparr):
     """Return a list of arrays, where each array is the difference between the current and previous array in nparr. The first array is returned as is."""
@@ -59,7 +61,7 @@ def get_fft(time, curve):
 
 def get_fund_freq_and_amp(time, curve):
     """Return the fundamental frequency and its complex amplitude (modulus and phase) for a given time-domain curve. \n
-    (time, curve) -> fund_freq, fund_complex_amplitude
+    (time, curve) -> (fund_xf, fund_yf)
     """
     xf, yf = get_fft(time, curve)
     # print(xf.shape, yf.shape)
@@ -70,11 +72,14 @@ def get_fund_freq_and_amp(time, curve):
     idx_fund_freq = np.where(np.abs(yf) == np.abs(yf).max())[0][0] if len(np.where(np.abs(yf) == np.abs(yf).max())[0]) == 1 else None
     fund_freq = xf[idx_fund_freq]
     
-    return {
-        "fund_freq": fund_freq, 
-        "modulus": np.abs(yf[idx_fund_freq]), 
-        "phase": np.angle(yf[idx_fund_freq]),
-        }
+    if False:
+        return {
+            "fund_freq": fund_freq, 
+            "modulus": np.abs(yf[idx_fund_freq]), 
+            "phase": np.angle(yf[idx_fund_freq]),
+            }
+    
+    return (xf[idx_fund_freq], yf[idx_fund_freq])
 
 def plot_time_and_freq_domain(time, lum_curve, laser_curve):
     """Plot time and frequency domain of the luminescence and laser curves"""
@@ -106,3 +111,7 @@ def plot_time_and_freq_domain(time, lum_curve, laser_curve):
     axs[1].set_title("Frequency Domain")
     plt.show()
 
+def get_modulus_angle_unc(x, dx, y, dy):
+    th = atan(ufloat(y, dy)/ufloat(x, dx))
+    modulus = sqrt(ufloat(x, dx)**2 + ufloat(y, dy)**2)
+    return modulus, th
