@@ -16,6 +16,19 @@ def process_npy_array(nparr):
         data.append(np.column_stack((xs,ys)))
     return data 
 
+def extract_data_info_from_path(path: str):
+  freq = int(path.split("_fg")[1].split("Hz")[0])
+  amp = float(path.split("Hz_")[1].split("V_")[0])
+  offset = float(path.split("V_")[1].split("offs")[0])
+  data = np.loadtxt(path) if ".txt" in path else process_npy_array(np.load(path))
+
+  return {
+      "freq": freq,
+      "amp": amp,
+      "offset": offset,
+      "data": data,
+  }
+
 def get_mean_and_variance(data):
     """Get a PROCESSED DATA array and calculate the mean and variance of the ys values for each x value. The data array is expected to be a list of arrays, where each array has two columns: the first column contains the x values and the second column contains the y values. The function returns three arrays: the x values, the mean of the y values for each x value, and the variance of the y values for each x value."""
     data = np.array(data)

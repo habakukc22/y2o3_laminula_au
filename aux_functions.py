@@ -3,11 +3,19 @@ from scipy.optimize import curve_fit
 
 def shorten_points(data, num_points_off=10):
     """Remove os primeiros e últimos `num_points_off` pontos. Aceita shape (2, N)."""
+    if isinstance(num_points_off, int):
+        start_num_points_off = num_points_off
+        end_num_points_off = num_points_off
+    elif isinstance(num_points_off, tuple):
+        start_num_points_off, end_num_points_off = num_points_off
+    else:
+        raise ValueError("`num_points_off` must be an integer or a tuple of two integers")
+    
     if len(data) > 200:
         data = data[:200]
 
     xs, ys = data[:,0], data[:,1]
-    return xs[num_points_off:-num_points_off], ys[num_points_off:-num_points_off]
+    return xs[start_num_points_off:-end_num_points_off], ys[start_num_points_off:-end_num_points_off]
 
 def make_fitting_func(omega):
     """ Return a sinusoidal function parameterized by the angular frequency `omega`. """
