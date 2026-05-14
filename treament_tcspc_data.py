@@ -10,8 +10,8 @@ def process_npy_array(nparr):
     data = []
     xs = np.array(nparr[0][0])
     ys = np.array(nparr[0][1])
-    # print(f"Dentro de treat_npy_array xs: \n {xs}")
-    # print(f"Dentro de treat_npy_array ys: \n {ys}")
+    print(f"Dentro de treat_npy_array xs: \n {xs}")
+    print(f"Dentro de treat_npy_array ys: \n {ys}")
     # xs, ys = [], []
     for idx in range(len(nparr)):
         ys = nparr[idx][1] if idx == 0 else (nparr[idx][1]-nparr[idx-1][1])
@@ -22,7 +22,7 @@ def extract_data_info_from_path(path: str):
   freq = int(path.split("_fg")[1].split("Hz")[0])
   amp = float(path.split("Hz_")[1].split("V_")[0])
   offset = float(path.split("V_")[1].split("offs")[0])
-  data = np.loadtxt(path) if ".txt" in path else process_npy_array(np.load(path))
+  data = np.loadtxt(path) if ".txt" in path else process_npy_array(np.load(path, allow_pickle=True))
 
   return {
       "freq": freq,
