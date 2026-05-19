@@ -59,6 +59,37 @@ def get_fft(time, curve):
   xf = fftfreq(N, sample_interval)
   return xf, yf
 
+def get_xf_yf_fund(time, curve):
+  """Return the frequency and complex amplitude for the point of the FFT with largest modulus. \n
+  (time, curve) -> (xf_fund, yf_fund)"""
+  xf, yf = get_fft(time, curve)
+  mask = xf > 0
+  xf = xf[mask]
+  yf = yf[mask]
+
+  abs_yf_list = np.abs(yf)
+  largest_amp_list = np.where(abs_yf_list == abs_yf_list.max())[0]
+  idx_freq = largest_amp_list[0] if len(largest_amp_list) == 1 else None
+
+  xf_fund, yf_fund = xf[idx_freq], yf[idx_freq]
+
+  return xf_fund, yf_fund
+
+def get_mean_amp_and_phase(phasors_list: list):
+    """Return mean modulus, mean phase and their errors for a list of complex numbers. \n
+    phasor_list -> (mean_amp, amp_error, mean_phase, phase_error)
+    """
+    phasors = np.array(phasors_list)
+    mean_phasor = phasors.mean()
+    mean_amp = np.abs(phasors.mean())
+    amp_error = (np.abs(phasors)).std()
+    mean_phasor_phase = np.angle(mean_phasor)
+    phase_list = np.angle(phasors)
+    phase_deviations = phase_list - mean_phasor_phase
+    wrapped_deviations = (phase_deviations + np.pi) % (2 * np.pi) - np.pi
+    
+    return mean_amp, amp_error, mean_phasor_phase, wrapped_deviations.std()
+
 def get_fund_freq_and_amp(time, curve):
     """Return the fundamental frequency and its complex amplitude (modulus and phase) for a given time-domain curve. \n
     (time, curve) -> (fund_xf, fund_yf)
