@@ -5,24 +5,70 @@ import matplotlib.pyplot as plt
 from uncertainties import ufloat
 from uncertainties.umath import sqrt, atan
 
+def many_consecutive_zeros(data, consecutive_zeros = 10):
+    """Find consecutive zeros in an array of values."""
+    zeros = 0
+    for val in data:
+        if val == 0:
+            zeros += 1
+            if zeros == 10:
+                return True # Encontrou a sequência!
+        else:
+            zeros = 0 # Quebrou a sequência, reseta o contador
+            
+    return False
+
 def process_npy_array(nparr):
     """Return a list of arrays, where each array is the difference between the current and previous array in nparr. The first array is returned as is."""
     data = []
-    xs = np.array(nparr[0][0])
-    ys = np.array(nparr[0][1])
-    print(f"Dentro de treat_npy_array xs: \n {xs}")
-    print(f"Dentro de treat_npy_array ys: \n {ys}")
-    # xs, ys = [], []
-    for idx in range(len(nparr)):
-        ys = nparr[idx][1] if idx == 0 else (nparr[idx][1]-nparr[idx-1][1])
-        data.append(np.column_stack((xs,ys)))
-    return data 
+    non_zero_idx = 0
 
-def extract_data_info_from_path(path: str):
+    for idx in range(len(nparr)):
+      if len(nparr[idx][0])>0:
+        non_zero_idx = idx
+        xs = np.array(nparr[idx][0])
+        break
+
+    #Find minimum length
+    min_len = len(xs)
+    for idx in range(len(nparr)):
+      if idx >= non_zero_idx:
+        min_len = min(min_len, len(nparr[idx][1]))
+    
+    xs = xs[:min_len]
+
+    # ys = np.array(nparr[0][1])
+    
+    for idx in range(len(nparr)):
+        if idx>=non_zero_idx:
+          if idx == non_zero_idx:
+            ys = np.array(nparr[idx][1])[:min_len]
+          else:
+            ys = np.array(nparr[idx][1])[:min_len]-np.array(nparr[idx-1][1])[:min_len]
+          data.append(np.column_stack((xs,ys)))
+    
+    #Filter array to exclude points with 0 counts
+    filtered_data =[
+      array for array in data 
+      if not many_consecutive_zeros(array[:200, 1])
+      # if np.any(array[:100, 1] != 0)
+      ]
+
+    #Shorten the list of points to 200 points
+    if len(filtered_data[0])>200:
+      short_arr = [arr[:200,:] for arr in filtered_data]
+      return short_arr
+    
+    return filtered_data
+
+def extract_data_info_from_path(path: str, raw_data = False):
   freq = int(path.split("_fg")[1].split("Hz")[0])
   amp = float(path.split("Hz_")[1].split("V_")[0])
   offset = float(path.split("V_")[1].split("offs")[0])
-  data = np.loadtxt(path) if ".txt" in path else process_npy_array(np.load(path, allow_pickle=True))
+  if raw_data:
+    data = np.loadtxt(path) if ".txt" in path else np.load(path, allow_pickle=True)
+  else:
+    data = np.loadtxt(path) if ".txt" in path else process_npy_array(np.load(path, allow_pickle=True))
 
   return {
       "freq": freq,
@@ -141,8 +187,3 @@ def plot_time_and_freq_domain(time, lum_curve, laser_curve):
     axs[1].legend()
     axs[1].set_title("Frequency Domain")
     plt.show()
-
-def get_modulus_angle_unc(x, dx, y, dy):
-    th = atan(ufloat(y, dy)/ufloat(x, dx))
-    modulus = sqrt(ufloat(x, dx)**2 + ufloat(y, dy)**2)
-    return modulus, th
