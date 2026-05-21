@@ -127,14 +127,14 @@ def get_mean_amp_and_phase(phasors_list: list):
     """
     phasors = np.array(phasors_list)
     mean_phasor = phasors.mean()
-    mean_amp = np.abs(phasors.mean())
-    amp_error = (np.abs(phasors)).std()
+    mean_amp = np.abs(mean_phasor)
+    amp_error = ((np.abs(phasors)).std())/np.sqrt(len(phasors))
     mean_phasor_phase = np.angle(mean_phasor)
     phase_list = np.angle(phasors)
     phase_deviations = phase_list - mean_phasor_phase
     wrapped_deviations = (phase_deviations + np.pi) % (2 * np.pi) - np.pi
     
-    return mean_amp, amp_error, mean_phasor_phase, wrapped_deviations.std()
+    return mean_amp, amp_error, mean_phasor_phase, (wrapped_deviations.std())/np.sqrt(len(wrapped_deviations))
 
 def get_fund_freq_and_amp(time, curve):
     """Return the fundamental frequency and its complex amplitude (modulus and phase) for a given time-domain curve. \n
