@@ -18,64 +18,111 @@ def many_consecutive_zeros(data, consecutive_zeros = 10):
             
     return False
 
+# def process_npy_array(nparr):
+#     """Return a list of arrays, where each array is the difference between the current and previous array in nparr. The first array is returned as is."""
+#     data = []
+#     non_zero_idx = 0
+
+#     for idx in range(len(nparr)):
+#       if len(nparr[idx][0])>0:
+#         non_zero_idx = idx
+#         xs = np.array(nparr[idx][0])
+#         break
+
+#     #Find minimum length
+#     min_len = len(xs)
+#     for idx in range(len(nparr)):
+#       if idx >= non_zero_idx:
+#         min_len = min(min_len, len(nparr[idx][1]))
+    
+#     xs = xs[:min_len]
+
+#     # ys = np.array(nparr[0][1])
+    
+#     for idx in range(len(nparr)):
+#         if idx>=non_zero_idx:
+#           if idx == non_zero_idx:
+#             ys = np.array(nparr[idx][1])[:min_len]
+#           else:
+#             ys = np.array(nparr[idx][1])[:min_len]-np.array(nparr[idx-1][1])[:min_len]
+#           data.append(np.column_stack((xs,ys)))
+    
+#     #Filter array to exclude points with 0 counts
+#     filtered_data =[
+#       array for array in data 
+#       if not many_consecutive_zeros(array[:200, 1])
+#       # if np.any(array[:100, 1] != 0)
+#       ]
+
+#     #Shorten the list of points to 200 points
+#     if len(filtered_data[0])>200:
+#       short_arr = [arr[:200,:] for arr in filtered_data]
+#       return short_arr
+    
+#     return filtered_data
+
+# def extract_data_info_from_path(path: str, raw_data = False):
+#   freq = int(path.split("_fg")[1].split("Hz")[0])
+#   amp = float(path.split("Hz_")[1].split("V_")[0])
+#   offset = float(path.split("V_")[1].split("offs")[0])
+#   if raw_data:
+#     data = np.loadtxt(path) if ".txt" in path else np.load(path, allow_pickle=True)
+#   else:
+#     data = np.loadtxt(path) if ".txt" in path else process_npy_array(np.load(path, allow_pickle=True))
+
+#   return {
+#       "freq": freq,
+#       "amp": amp,
+#       "offset": offset,
+#       "data": data,
+#   }
+
 def process_npy_array(nparr):
     """Return a list of arrays, where each array is the difference between the current and previous array in nparr. The first array is returned as is."""
     data = []
-    non_zero_idx = 0
+    num_points = 200
+    
+    # print(f"nrep: {len(nparr)}")
+
+    if len(nparr[0][0])>0:
+      xs = np.array(nparr[0][0])[:num_points]
+    else:
+      print("A primeira das medidas possui array de tempo vazio")
+      return None
 
     for idx in range(len(nparr)):
-      if len(nparr[idx][0])>0:
-        non_zero_idx = idx
-        xs = np.array(nparr[idx][0])
-        break
-
-    #Find minimum length
-    min_len = len(xs)
-    for idx in range(len(nparr)):
-      if idx >= non_zero_idx:
-        min_len = min(min_len, len(nparr[idx][1]))
-    
-    xs = xs[:min_len]
-
-    # ys = np.array(nparr[0][1])
-    
-    for idx in range(len(nparr)):
-        if idx>=non_zero_idx:
-          if idx == non_zero_idx:
-            ys = np.array(nparr[idx][1])[:min_len]
-          else:
-            ys = np.array(nparr[idx][1])[:min_len]-np.array(nparr[idx-1][1])[:min_len]
-          data.append(np.column_stack((xs,ys)))
-    
-    #Filter array to exclude points with 0 counts
-    filtered_data =[
-      array for array in data 
-      if not many_consecutive_zeros(array[:200, 1])
-      # if np.any(array[:100, 1] != 0)
-      ]
-
-    #Shorten the list of points to 200 points
-    if len(filtered_data[0])>200:
-      short_arr = [arr[:200,:] for arr in filtered_data]
-      return short_arr
-    
-    return filtered_data
+      # if idx > 199: break
+      ys = np.array(nparr[idx][1])[:num_points]
+      # print(f"(xs, ys) = ({len(xs)},{len(ys)})")
+      if len(xs)==len(ys):
+        data.append(np.column_stack((xs,ys)))
+      else:
+        # plt.plot(xs, ys)
+        print("O tamanho de xs não é o mesmo de ys")
+        return None
+        
+    return data
 
 def extract_data_info_from_path(path: str, raw_data = False):
   freq = int(path.split("_fg")[1].split("Hz")[0])
   amp = float(path.split("Hz_")[1].split("V_")[0])
   offset = float(path.split("V_")[1].split("offs")[0])
-  if raw_data:
-    data = np.loadtxt(path) if ".txt" in path else np.load(path, allow_pickle=True)
-  else:
-    data = np.loadtxt(path) if ".txt" in path else process_npy_array(np.load(path, allow_pickle=True))
-
-  return {
+  try:
+    if raw_data:
+      data = np.loadtxt(path) if ".txt" in path else np.load(path, allow_pickle=True)
+    else:
+      data = np.loadtxt(path) if ".txt" in path else process_npy_array(np.load(path, allow_pickle=True))
+    
+    return {
       "freq": freq,
       "amp": amp,
       "offset": offset,
       "data": data,
-  }
+    }
+  except:
+    print(f"Error to load freq {freq}Hz file.\nThe file path is {path}")
+    # return None
+
 
 def get_mean_and_variance(data):
     """Get a PROCESSED DATA array and calculate the mean and variance of the ys values for each x value. The data array is expected to be a list of arrays, where each array has two columns: the first column contains the x values and the second column contains the y values. The function returns three arrays: the x values, the mean of the y values for each x value, and the variance of the y values for each x value."""
