@@ -2,21 +2,7 @@ import numpy as np
 from scipy.fft import fft, fftfreq
 import os
 import matplotlib.pyplot as plt
-from uncertainties import ufloat
-from uncertainties.umath import sqrt, atan
-
-def many_consecutive_zeros(data, consecutive_zeros = 10):
-    """Find consecutive zeros in an array of values."""
-    zeros = 0
-    for val in data:
-        if val == 0:
-            zeros += 1
-            if zeros == 10:
-                return True # Encontrou a sequência!
-        else:
-            zeros = 0 # Quebrou a sequência, reseta o contador
-            
-    return False
+import matplotlib.colors as mcolors
 
 def process_npy_array(nparr):
   """Return a list of arrays, where each array is the difference between the current and previous array in nparr. The first array is returned as is."""
@@ -170,3 +156,39 @@ def plot_time_and_freq_domain(time, lum_curve, laser_curve):
     axs[1].legend()
     axs[1].set_title("Frequency Domain")
     plt.show()
+
+def time_domain_visual_verification(particles: list):
+
+    for p_idx, p_dic in enumerate(particles):
+        
+        print(f"\n{'='*50}")
+        print(f"  Processing particle {p_dic['p_label']}  ")
+        print(f"{'='*50}")
+
+        omegas      = []
+        phase_diffs = []
+
+        # ---- Subplots de verificação visual ----
+        fig, axs = plt.subplots(rows, cols, figsize=(12, 12), constrained_layout=True)
+        fig.suptitle(f"Particle {p_dic["p_label"]}", fontsize=14)
+
+        # data = p_dic["p_data"]
+
+        for index, step_data in enumerate(p_dic["p_data"]):
+            freq = step_data["freq"]
+            i, j = divmod(index, cols)
+            omega = 2 * np.pi * float(freq) * 1e-6
+            omegas.append(omega)
+
+            cmap = plt.get_cmap("coolwarm")
+            norm = mcolors.Normalize(vmin=0, vmax = (len(step_data["data"])-1) )
+
+            ax = axs[i, j]
+            for idx_rep, rep in enumerate(step_data["data"]):
+                c_grad = cmap(norm(idx_rep))
+                ax.plot(rep[:,0], rep[:,1], color=c_grad)
+
+            ax.set_title(f"{freq} Hz")
+
+
+        plt.show()
