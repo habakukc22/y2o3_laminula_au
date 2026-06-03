@@ -4,21 +4,6 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-from uncertainties import ufloat
-from uncertainties.umath import sqrt, atan
-
-def many_consecutive_zeros(data, consecutive_zeros = 10):
-    """Find consecutive zeros in an array of values."""
-    zeros = 0
-    for val in data:
-        if val == 0:
-            zeros += 1
-            if zeros == 10:
-                return True # Encontrou a sequência!
-        else:
-            zeros = 0 # Quebrou a sequência, reseta o contador
-            
-    return False
 
 def process_npy_array(nparr):
   """Return a list of arrays, where each array is the difference between the current and previous array in nparr. The first array is returned as is."""
@@ -237,14 +222,14 @@ def plot_time_and_freq_domain(time, lum_curve, laser_curve):
     # Eixo principal (Esquerdo - Verde/Lum)
     axs[0].set_xlabel("Time ($\mu$s)")
     axs[0].set_ylabel("Luminescence (a.u.)", color="tab:green")
-    line1 = axs[0].plot(time*(1e-6), lum_curve, color="tab:green", label="lum")
+    line1 = axs[0].plot(time, lum_curve, color="tab:green", label="lum")
     axs[0].tick_params(axis='y', labelcolor="tab:green")
     axs[0].set_title("Time Domain")
 
     # Eixo secundário (Direito - Vermelho/Laser)
     ax0_twin = axs[0].twinx()
     ax0_twin.set_ylabel("Laser (a.u.)", color="tab:red")
-    line2 = ax0_twin.plot(time*(1e-6), laser_curve, color="tab:red", label="laser")
+    line2 = ax0_twin.plot(time, laser_curve, color="tab:red", label="laser")
     ax0_twin.tick_params(axis='y', labelcolor="tab:red")
 
     # Juntando as legendas dos dois eixos
@@ -256,15 +241,17 @@ def plot_time_and_freq_domain(time, lum_curve, laser_curve):
     # --- DOMÍNIO DA FREQUÊNCIA ---
     # Eixo principal (Esquerdo - Verde/Lum)
     axs[1].set_xlabel("Frequency (Hz)")
-    axs[1].set_ylabel("Lum Amplitude", color="tab:green")
-    line3 = axs[1].plot(xf_lum, np.abs(yf_lum), color="tab:green", label="lum")
+    axs[1].set_ylabel("Lum Power", color="tab:green")
+    line3 = axs[1].plot(xf_lum, np.abs(yf_lum)**2, color="tab:green", label="lum")
     axs[1].tick_params(axis='y', labelcolor="tab:green")
     axs[1].set_title("Frequency Domain")
+    axs[1].set_yscale("log")
 
     # Eixo secundário (Direito - Vermelho/Laser)
     ax1_twin = axs[1].twinx()
-    ax1_twin.set_ylabel("Laser Amplitude", color="tab:red")
-    line4 = ax1_twin.plot(xf_laser, np.abs(yf_laser), color="tab:red", label="laser")
+    ax1_twin.set_ylabel("Laser Power", color="tab:red")
+    ax1_twin.set_yscale("log")
+    line4 = ax1_twin.plot(xf_laser, np.abs(yf_laser)**2, color="tab:red", label="laser")
     ax1_twin.tick_params(axis='y', labelcolor="tab:red")
 
     # Juntando as legendas dos dois eixos
@@ -310,7 +297,7 @@ def calculate_harmonic_powers(time, curve, fundamental_freq, num_harmonics=5):
     
     return np.array(p_spectrum)
 
-def calculate_noise_powers(time, curve, fundamental_freq):
+def calculate_noise_powers(time, curve, fundamental_freq, first_noisy_harmonic = 20):
     """
     Calculates Total Harmonic Distortion (THD) for a given signal.
     Time has to be in us.
@@ -342,78 +329,13 @@ def calculate_noise_powers(time, curve, fundamental_freq):
 
     harmonic_power_list = powers[harmonic_idx_list]
     
-    mean_p_list = []
-    std_p_list = []
-    for idx, power in enumerate(harmonic_power_list):
-        if idx != len(harmonic_idx_list)-1:
-            mean_p = harmonic_power_list[idx+1:].mean()
-            std_p = harmonic_power_list[idx+1:].std()
-            mean_p_list.append(mean_p)
-            std_p_list.append(std_p)
-        else:
-            mean_p_list.append(0.)
-            std_p_list.append(0.)
-    
-    r = np.column_stack(
-        (xf[harmonic_idx_list], harmonic_power_list, mean_p_list, std_p_list))
-
-    # print(f"greatest harmonic: {greatest_harmonic}")
-    # print(f"fund_idx, fund_freq: {(fund_idx, xf[fund_idx])}")
-    # print(f"greatest freq: {xf[-1]}")
-    
-    valid_harmonics = []
-    for idx, item in enumerate(r):
-        is_too_large = idx >= 10
-        is_signal = item[1] > item[2]+3*item[3]
-        
-        if (not is_too_large) and is_signal:
-            n = [idx+1, item[2]+3*item[3]]
-
-            valid_harmonics.append(n)
-            # print(f"n = {n} ; freq_n: {item[0]}, é sinal: {item[1] > item[2]+3*item[3]}") 
-    
-    noise_threshold = valid_harmonics[-1][1]
-    # print(f"noise_th = {noise_threshold}")
-    # harmonic_power_list
+    mean_noise = harmonic_power_list[first_noisy_harmonic:].mean()
+    std_noise = harmonic_power_list[first_noisy_harmonic:].std()
+              
+    noise_threshold = mean_noise + 3*std_noise
     return noise_threshold 
 
-def plot_harmonic_power(particles, particles_off=[], freqs_off=[], laser_exc = []):
-    
-    for p_idx, p in enumerate(particles):
-        if p_idx in particles_off: continue
-
-        cmap = plt.get_cmap("coolwarm")
-        norm = mcolors.Normalize(vmin=0, vmax = (len(particles)-1) )
-
-        c_grad = cmap(norm(len(particles) - p_idx))
-
-        for step_idx, step in enumerate(p["p_data"]):
-            if step["freq"] in freqs_off: continue
-
-            time = np.array(step["data"])[0,:,0]
-            signal = np.array(step["data"])[:,:,1].mean(axis=0)
-
-            p_spec_harm = calculate_harmonic_powers(time, signal, 
-                            fundamental_freq = step["freq"], 
-                            num_harmonics = 20,
-                            )
-            threshold_noise = calculate_noise_powers(time, signal,
-                fundamental_freq=step["freq"],
-            )
-            
-            plt.plot(p_spec_harm[:,0], 
-                     (threshold_noise)*np.ones(len(p_spec_harm[:,0])), 
-                     "b--")
-
-            plt.scatter(p_spec_harm[:,0], p_spec_harm[:,1], color = c_grad)
-            plt.title(f"Power spectrum for {step["freq"]}Hz - laser power {power_label[p_idx]}mA")
-            plt.ylabel("$|A(\omega)|^2$")
-            plt.xlabel("f (Hz)")
-            plt.yscale("log")
-            plt.xscale("log")
-            plt.show()
-
-def plot_harmonic_power_gemini(particles, particles_off=[], freqs_off=[], laser_exc=[], power_label=[]):
+def plot_harmonic_power(particles, particles_off=[], freqs_off=[], laser_exc=[], power_label=[]):
     
     for p_idx, p in enumerate(particles):
         if p_idx in particles_off: continue
@@ -424,10 +346,11 @@ def plot_harmonic_power_gemini(particles, particles_off=[], freqs_off=[], laser_
         
         # Define o título principal (suptitle) para toda a figura
         if bool(power_label):
-            # fig.suptitle(f"Laser power {power_label[p_idx]}mA", fontsize=18, fontweight='bold')
-            fig.suptitle(f"Laser ??", fontsize=18, fontweight='bold')
+            fig.suptitle(f"Harmonic powers - Luminescence - Laser power {power_label[p_idx]}mA", fontsize=18, fontweight='bold')
+            # fig.suptitle(f"Laser ??", fontsize=18, fontweight='bold')
         else:
-            fig.suptitle(f"Laser", fontsize=18, fontweight='bold')
+            fig.suptitle(f"Harmonic powers - Luminescence", fontsize=18, fontweight='bold')
+            # fig.suptitle(f"Laser", fontsize=18, fontweight='bold')
 
         # "Achata" a matriz 6x4 de eixos em uma lista 1D de 24 posições para facilitar o acesso
         axes_flat = axes.flatten()
@@ -440,8 +363,9 @@ def plot_harmonic_power_gemini(particles, particles_off=[], freqs_off=[], laser_
         plot_idx = 0 # Contador para sabermos em qual subplot estamos
 
         for step_idx, step in enumerate(p["p_data"]):
-            if step["freq"] in freqs_off: continue
-            
+            freq = step["freq"]
+            if freq in freqs_off: continue
+
             # Trava de segurança: se houver mais de 24 passos, evita erro de índice
             # if plot_idx >= 24:
             #     print(f"Aviso: Mais de 24 frequências para a partícula {p_idx}. As extras não serão plotadas.")
@@ -449,27 +373,58 @@ def plot_harmonic_power_gemini(particles, particles_off=[], freqs_off=[], laser_
 
             # 2. Seleciona o subplot atual
             ax = axes_flat[plot_idx]
-
+            
+            # Get the luminescence points and noise 
             time = np.array(step["data"])[0,:,0]
             signal = np.array(step["data"])[:,:,1].mean(axis=0)
 
             p_spec_harm = calculate_harmonic_powers(
                 time, signal, 
-                fundamental_freq=step["freq"], 
+                fundamental_freq=freq, 
                 num_harmonics=20
             )
             threshold_noise = calculate_noise_powers(
                 time, signal,
-                fundamental_freq=step["freq"]
+                fundamental_freq=freq
             )
+            
+            # Get the laser points and noise
+            is_laser_present = len(laser_exc) != 0
+            does_laser_freq_match = False if (not is_laser_present) else laser_exc[step_idx]["freq"] == freq
+
+            if is_laser_present and does_laser_freq_match:
+                time = np.array(laser_exc[step_idx]["data"])[0,:,0]
+                signal = np.array(laser_exc[step_idx]["data"])[:,:,1].mean(axis=0)
+
+                p_spec_harm_exc = calculate_harmonic_powers(
+                    time, signal, 
+                    fundamental_freq=freq, 
+                    num_harmonics=20
+                )
+                threshold_noise_exc = calculate_noise_powers(
+                    time, signal,
+                    fundamental_freq=freq
+                ) 
 
             # 3. Usa 'ax.plot' e 'ax.scatter' em vez de 'plt.*'
-            ax.plot(p_spec_harm[:,0], (threshold_noise)*np.ones(len(p_spec_harm[:,0])), "b--")
-            # ax.plot(p_spec_harm[:,0], (p_noise - 3*p_std)*np.ones(len(p_spec_harm[:,0])), "b--")
-            ax.scatter(p_spec_harm[:,0], p_spec_harm[:,1], color=c_grad)
+            
+            #Plot luminescence
+            ax.plot(p_spec_harm[:,0], (threshold_noise)*np.ones(len(p_spec_harm[:,0])),
+                    color="#008D07", linestyle="--")
+            ax.scatter(p_spec_harm[:,0], p_spec_harm[:,1],
+                       label="lum", color=c_grad)
+            
+            # Plot laser
+            if is_laser_present and does_laser_freq_match:
+                ax.plot(p_spec_harm_exc[:,0], (threshold_noise_exc)*np.ones(len(p_spec_harm_exc[:,0])),
+                        color="#C5C5C5", linestyle="--")
+                ax.scatter(p_spec_harm_exc[:,0], p_spec_harm_exc[:,1],
+                           label="exc", color="gray")
+                # ax.plot(p_spec_harm[:,0], (p_noise - 3*p_std)*np.ones(len(p_spec_harm[:,0])), "b--")
             
             # 4. Configura títulos e eixos (no formato ax.set_*)
-            ax.set_title(f"{step['freq']} Hz", fontsize=12)
+            ax.set_title(f"{freq} Hz", fontsize=12)
+            ax.legend()
             ax.set_ylabel("$|A(\omega)|^2$")
             ax.set_xlabel("f (Hz)")
             ax.set_yscale("log")
