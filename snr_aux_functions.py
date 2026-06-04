@@ -443,6 +443,98 @@ def plot_harmonic_power(particles, particles_off=[], freqs_off=[], laser_exc=[],
         # Mostra o painel completo da partícula atual antes de ir para a próxima
         plt.show()
 
+def calculate_thd(time, curve, fundamental_freq, num_harmonics):
+    """
+    Calculates Total Harmonic Distortion (THD) for a given signal.
+    Time has to be in us.
+    """
+    # 1. Obtém a FFT usando a sua função existente
+    xf, yf = get_fft(time, curve)
+    
+    # 2. Mantém o termo DC e as frequências positivas
+    mask_positive = xf > 0
+    xf = xf[mask_positive]
+    yf = yf[mask_positive]
+        
+    # Calculate magnitudes
+    magnitudes = np.abs(yf)
+    
+    # Helper to find the magnitude peak closest to a target frequency
+    def get_peak_magnitude(target_f):
+        idx = np.argmin(np.abs(xf - target_f))
+        return magnitudes[idx]
+
+    # Get fundamental magnitude (V1)
+    v1 = get_peak_magnitude(fundamental_freq)
+    
+    if v1 == 0:
+        return 0.0
+
+    # Collect harmonic magnitudes (V2, V3, ..., Vn)
+    harmonic_sq_sum = 0.0
+    for h in range(2, num_harmonics + 1):
+        v_h = get_peak_magnitude(fundamental_freq * h)
+        harmonic_sq_sum += v_h ** 2
+
+    # Compute THD ratio and percentage
+    thd_ratio = np.sqrt(harmonic_sq_sum) / v1
+    return thd_ratio * 100
+
+def plot_thd(particles, num_harmonics, particles_off = [], freqs_off = [], laser_data = []):
+
+    for p_idx, p in enumerate(particles):
+        if p_idx in particles_off: continue
+
+        cmap = plt.get_cmap("coolwarm")
+        norm = mcolors.Normalize(vmin=0, vmax = (len(p_list)-1) )
+
+        c_grad = cmap(norm(len(p_list) - p_idx))
+        put_label = True
+
+        for step_idx, step in enumerate(p["p_data"]):
+            
+            if step_idx != 0: 
+                put_label = False
+
+            if step["freq"] in freqs_off: continue
+            # if step["freq"]
+
+            time = np.array(step["data"])[0,:,0]
+            signal = np.array(step["data"])[:,:,1].mean(axis=0)
+            plt.scatter(
+                step["freq"], 
+                calculate_thd(time, signal, fundamental_freq=step["freq"], num_harmonics=num_harmonics), 
+                color=c_grad,
+                label= "lum" if put_label else None 
+                )
+            
+    put_label = True
+
+    if bool(laser_data):
+        for step_idx, step in enumerate(laser_data):
+            if step["freq"] in freqs_off: continue
+
+            if step_idx != 0: 
+                put_label = False
+
+            time = np.array(step["data"])[0,:,0]
+            signal = np.array(step["data"])[:,:,1].mean(axis=0)
+
+            plt.scatter(step["freq"], 
+                        calculate_thd(time, signal, 
+                                      fundamental_freq=step["freq"], 
+                                      num_harmonics=num_harmonics),
+                        color="purple",
+                        label= "exc" if put_label else None
+            )
+
+    plt.xscale("log")
+    plt.ylabel("THD (%)")
+    plt.xlabel("Frequency (Hz)")
+    plt.title(f"THD from 2 to {num_harmonics} harmonics")
+    plt.legend()
+    plt.show()
+
 #===========================================================================================
 
 # def plot_time_and_freq_domain(time, lum_curve, laser_curve):

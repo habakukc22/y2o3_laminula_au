@@ -157,10 +157,11 @@ def plot_time_and_freq_domain(time, lum_curve, laser_curve):
     axs[1].set_title("Frequency Domain")
     plt.show()
 
-def time_domain_visual_verification(particles: list):
+def time_domain_visual_verification(particles: list, rows, cols, particles_off = []):
 
     for p_idx, p_dic in enumerate(particles):
-        
+        if p_idx in particles_off: continue
+
         print(f"\n{'='*50}")
         print(f"  Processing particle {p_dic['p_label']}  ")
         print(f"{'='*50}")
