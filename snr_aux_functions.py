@@ -486,9 +486,9 @@ def plot_thd(particles, num_harmonics, particles_off = [], freqs_off = [], laser
         if p_idx in particles_off: continue
 
         cmap = plt.get_cmap("coolwarm")
-        norm = mcolors.Normalize(vmin=0, vmax = (len(p_list)-1) )
+        norm = mcolors.Normalize(vmin=0, vmax = (len(particles)-1) )
 
-        c_grad = cmap(norm(len(p_list) - p_idx))
+        c_grad = cmap(norm(len(particles) - p_idx))
         put_label = True
 
         for step_idx, step in enumerate(p["p_data"]):
