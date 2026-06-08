@@ -1,0 +1,2 @@
+estamos avaliando como a luminescencia se comporta com a variacao da apm a offset para vermos o 2 harmonico
+a particula aqui eh a p1, a 1000hz, amp=0.5 e offset=0.4 ela estava a 8k contagens
